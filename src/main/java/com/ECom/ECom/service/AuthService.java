@@ -3,6 +3,7 @@ package com.ECom.ECom.service;
 import com.ECom.ECom.dto.AuthResponse;
 import com.ECom.ECom.dto.LoginRequest;
 import com.ECom.ECom.dto.RegisterRequest;
+import com.ECom.ECom.entity.RefreshToken;
 import com.ECom.ECom.entity.User;
 import com.ECom.ECom.repository.UserRepo;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepo.existsByEmail(request.getEmail())) {
@@ -36,10 +38,14 @@ public class AuthService {
         userRepo.save(user);
 
         String token = jwtService.generateToken(user);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
 
         return AuthResponse.builder()
                 .fullName(user.getFullName())
                 .token(token)
+                .refreshToken(refreshToken.getToken())
+                .refreshTokenExpiresOn(refreshToken.getExpiresOn())
                 .build();
     }
 
@@ -56,10 +62,20 @@ public class AuthService {
 
         String token = jwtService.generateToken(authentication);
 
+        RefreshToken activeToken = refreshTokenService.getActiveToken(user);
+        if (activeToken == null) {
+            activeToken = refreshTokenService.createRefreshToken(user);
+        }
+
+
         return AuthResponse.builder()
                 .fullName(user.getFullName())
                 .token(token)
+                .refreshToken(activeToken.getToken())
+                .refreshTokenExpiresOn(activeToken.getExpiresOn())
                 .build();
     }
+
+
 
 }

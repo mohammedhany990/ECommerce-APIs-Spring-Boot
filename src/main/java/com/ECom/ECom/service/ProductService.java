@@ -1,6 +1,7 @@
 package com.ECom.ECom.service;
 
 import com.ECom.ECom.dto.CreateProductDto;
+import com.ECom.ECom.dto.ProductFilterDTO;
 import com.ECom.ECom.dto.ProductReturningDto;
 import com.ECom.ECom.dto.UpdateProductDto;
 import com.ECom.ECom.entity.Product;
@@ -9,15 +10,20 @@ import com.ECom.ECom.entity.ProductCategory;
 import com.ECom.ECom.exception.ResourceNotFoundException;
 import com.ECom.ECom.helper.FileUploadUtil;
 import com.ECom.ECom.helper.ProductMapper;
+import com.ECom.ECom.helper.ProductSpecification;
 import com.ECom.ECom.repository.ProductBrandRepo;
 import com.ECom.ECom.repository.ProductCategoryRepo;
 import com.ECom.ECom.repository.ProductRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -29,11 +35,34 @@ public class ProductService {
     private final ProductMapper productMapper;
 
 
-    public List<ProductReturningDto> getAllProducts() {
-        return productRepo.findAll()
-                .stream()
-                .map(productMapper::toProductReturningDto)
-                .toList();
+
+
+    public Page<ProductReturningDto> getAllProducts(ProductFilterDTO filter) {
+        int page = filter.getPage() < 0 ? 0 : filter.getPage();
+        int size = filter.getSize() <= 0 ? 10 : filter.getSize();
+
+
+        String sortBy = (filter.getSortBy() == null || filter.getSortBy().isEmpty()) ? "id" : filter.getSortBy();
+        if ("price".equalsIgnoreCase(sortBy)) {
+            sortBy = "productPrice";
+        }
+
+        Sort.Direction direction =
+                (filter.getSortDir() != null && filter.getSortDir().equalsIgnoreCase("DESC"))
+                        ? Sort.Direction.DESC : Sort.Direction.ASC;
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+
+        Specification<Product> spec = Specification.allOf(
+                ProductSpecification.hasName(filter.getName()),
+                ProductSpecification.hasProductCategory(filter.getCategory()),
+                ProductSpecification.hasProductBrand(filter.getBrand()),
+                ProductSpecification.priceBetween(filter.getMinPrice(), filter.getMaxPrice())
+        );
+
+        return productRepo
+                .findAll(spec, pageable)
+                .map(productMapper::toProductReturningDto);
     }
 
     public ProductReturningDto getProductById(Long id) {

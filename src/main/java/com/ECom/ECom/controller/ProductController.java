@@ -1,6 +1,7 @@
 package com.ECom.ECom.controller;
 
 import com.ECom.ECom.dto.CreateProductDto;
+import com.ECom.ECom.dto.ProductFilterDTO;
 import com.ECom.ECom.dto.ProductReturningDto;
 import com.ECom.ECom.dto.UpdateProductDto;
 import com.ECom.ECom.exception.FileProcessingException;
@@ -8,6 +9,7 @@ import com.ECom.ECom.helper.ApiResponse;
 import com.ECom.ECom.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
@@ -24,9 +25,21 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<ProductReturningDto>>> getAllProducts() {
-        List<ProductReturningDto> products = productService.getAllProducts();
+//    @GetMapping
+//    public ResponseEntity<ApiResponse<List<ProductReturningDto>>> getAllProducts() {
+//        List<ProductReturningDto> products = productService.getAllProducts();
+//        return ResponseEntity.ok(
+//                new ApiResponse<>(
+//                        true,
+//                        "Products fetched successfully",
+//                        products
+//                )
+//        );
+//    }
+
+    @PostMapping("products")
+    public ResponseEntity<ApiResponse<Page<ProductReturningDto>>> searchProducts(@RequestBody ProductFilterDTO filter) {
+        Page<ProductReturningDto> products = productService.getAllProducts(filter);
         return ResponseEntity.ok(
                 new ApiResponse<>(
                         true,
@@ -35,6 +48,7 @@ public class ProductController {
                 )
         );
     }
+
 
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
