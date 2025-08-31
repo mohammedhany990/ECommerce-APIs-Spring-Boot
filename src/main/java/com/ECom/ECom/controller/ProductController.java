@@ -1,15 +1,11 @@
 package com.ECom.ECom.controller;
 
-import com.ECom.ECom.dto.CreateProductDto;
-import com.ECom.ECom.dto.ProductFilterDTO;
-import com.ECom.ECom.dto.ProductReturningDto;
-import com.ECom.ECom.dto.UpdateProductDto;
+import com.ECom.ECom.dto.*;
 import com.ECom.ECom.exception.FileProcessingException;
 import com.ECom.ECom.helper.ApiResponse;
 import com.ECom.ECom.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -38,16 +34,14 @@ public class ProductController {
 //    }
 
     @PostMapping("products")
-    public ResponseEntity<ApiResponse<Page<ProductReturningDto>>> searchProducts(@RequestBody ProductFilterDTO filter) {
-        Page<ProductReturningDto> products = productService.getAllProducts(filter);
-        return ResponseEntity.ok(
-                new ApiResponse<>(
-                        true,
-                        "Products fetched successfully",
-                        products
-                )
-        );
+    public ResponseEntity<ApiResponse<PageResponse<ProductReturningDto>>> searchProducts(
+            @RequestBody ProductFilterDTO filter) {
+
+        PageResponse<ProductReturningDto> products = productService.getAllProducts(filter);
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "Products fetched successfully", products));
     }
+
 
 
 

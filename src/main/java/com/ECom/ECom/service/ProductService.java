@@ -1,9 +1,6 @@
 package com.ECom.ECom.service;
 
-import com.ECom.ECom.dto.CreateProductDto;
-import com.ECom.ECom.dto.ProductFilterDTO;
-import com.ECom.ECom.dto.ProductReturningDto;
-import com.ECom.ECom.dto.UpdateProductDto;
+import com.ECom.ECom.dto.*;
 import com.ECom.ECom.entity.Product;
 import com.ECom.ECom.entity.ProductBrand;
 import com.ECom.ECom.entity.ProductCategory;
@@ -15,6 +12,9 @@ import com.ECom.ECom.repository.ProductBrandRepo;
 import com.ECom.ECom.repository.ProductCategoryRepo;
 import com.ECom.ECom.repository.ProductRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -35,11 +36,19 @@ public class ProductService {
     private final ProductMapper productMapper;
 
 
-
-
-    public Page<ProductReturningDto> getAllProducts(ProductFilterDTO filter) {
+    @Cacheable(value = "productSearch", key = "#filter.hashCode()")
+    public PageResponse<ProductReturningDto> getAllProducts(ProductFilterDTO filter) {
         int page = filter.getPage() < 0 ? 0 : filter.getPage();
         int size = filter.getSize() <= 0 ? 10 : filter.getSize();
+
+
+        BigDecimal minPrice = (filter.getMinPrice() == null || filter.getMinPrice().compareTo(BigDecimal.ZERO) < 0)
+                ? BigDecimal.ZERO
+                : filter.getMinPrice();
+
+        BigDecimal maxPrice = (filter.getMaxPrice() == null || filter.getMaxPrice().compareTo(BigDecimal.ZERO) <= 0)
+                ? BigDecimal.valueOf(Long.MAX_VALUE)
+                : filter.getMaxPrice();
 
 
         String sortBy = (filter.getSortBy() == null || filter.getSortBy().isEmpty()) ? "id" : filter.getSortBy();
@@ -57,14 +66,24 @@ public class ProductService {
                 ProductSpecification.hasName(filter.getName()),
                 ProductSpecification.hasProductCategory(filter.getCategory()),
                 ProductSpecification.hasProductBrand(filter.getBrand()),
-                ProductSpecification.priceBetween(filter.getMinPrice(), filter.getMaxPrice())
+                ProductSpecification.priceBetween(minPrice, maxPrice)
         );
 
-        return productRepo
+
+        Page<ProductReturningDto> productsPage = productRepo
                 .findAll(spec, pageable)
                 .map(productMapper::toProductReturningDto);
+
+        return new PageResponse<>(
+                productsPage.getContent(),
+                productsPage.getNumber(),
+                productsPage.getSize(),
+                productsPage.getTotalElements(),
+                productsPage.getTotalPages()
+        );
     }
 
+    @Cacheable(value = "products", key = "#id")
     public ProductReturningDto getProductById(Long id) {
         Product product = productRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
@@ -86,11 +105,30 @@ public class ProductService {
         return productMapper.toProductReturningDto(product);
     }
 
+//    @CacheEvict(value = "products", key = "#id")
+//    public void deleteProduct(Long id) {
+//        Product product = productRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
+//        productRepo.delete(product);
+//    }
+
+    @CacheEvict(value = "products", key = "#id")
     public void deleteProduct(Long id) {
-        Product product = productRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
+        Product product = productRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
+
+        String picturePath = product.getProductImageUrl();
+        if (picturePath != null && !picturePath.isEmpty()) {
+            String imageName = picturePath.substring(picturePath.lastIndexOf("/") + 1);
+            if (!imageName.isEmpty()) {
+                FileUploadUtil.deleteFile("products", imageName);
+            }
+        }
+
         productRepo.delete(product);
     }
 
+
+    @CachePut(value = "products", key = "#id")
     public ProductReturningDto updateProduct(Long id, UpdateProductDto dto) {
         Product product = productRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
         if (dto.getProductName() != null) {

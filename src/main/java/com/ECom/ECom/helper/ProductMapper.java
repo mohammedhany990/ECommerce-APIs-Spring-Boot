@@ -1,36 +1,3 @@
-
-//
-//@Component
-//public class ProductMapper {
-//
-//    public Product toProduct(CreateProductDto dto, ProductCategory category, ProductBrand brand, String picturePath) {
-//        return Product.builder()
-//                .productName(dto.getName())
-//                .productDescription(dto.getDescription())
-//                .productPrice(dto.getPrice())
-//                .productStock(dto.getProductStock())
-//                .productImageUrl(picturePath)
-//                .productCategory(category)
-//                .productBrand(brand)
-//                .build();
-//    }
-//
-//    public ProductReturningDto toProductReturningDto(Product product) {
-//        return ProductReturningDto.builder()
-//                .id(product.getId())
-//                .name(product.getProductName())
-//                .description(product.getProductDescription())
-//                .price(product.getProductPrice())
-//                .productStock(product.getProductStock())
-//                .productCategoryId(product.getProductCategory().getId())
-//                .category(product.getProductCategory().getCategoryName())
-//                .productBrandId(product.getProductBrand().getId())
-//                .brand(product.getProductBrand().getBrandName())
-//                .pictureUrl("http://localhost:8080/" + product.getProductImageUrl())
-//                .build();
-//    }
-//}
-
 package com.ECom.ECom.helper;
 
 import com.ECom.ECom.dto.CreateProductDto;
@@ -55,6 +22,8 @@ public interface ProductMapper {
     @Mapping(source = "brand", target = "productBrand")
     @Mapping(source = "picturePath", target = "productImageUrl")
     Product toProduct(CreateProductDto dto, ProductCategory category, ProductBrand brand, String picturePath);
+
+
 
     @Mapping(source = "product.id", target = "id")
     @Mapping(source = "product.productName", target = "name")
